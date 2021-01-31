@@ -217,36 +217,6 @@
 			//      };
 			//      getGeoJSON();
 		}
-	    var states = {
-			state0: {
-				html:'<p>This participatory planning tool provides users with a space to draw and comment on a map.</p>',
-				buttons: { "<p>How do I use this map?</p>": true },
-				focus: 1,
-				submit:function(e,v,m,f){
-					if(v){
-						e.preventDefault();
-						$.prompt.goToState('state1');
-						return false;
-					}
-					$.prompt.close();
-				}
-			},
-			state1: {
-				html:'<p>Use the buttons on the left to draw on the map. Click on the buttons to draw shapes and markers. You will be asked to provide a username and a comment. Click on the map to view the contributions.</p>',
-				buttons: { "<p>Back</p>": -1, "<p>Exit</p>": 0 },
-				position: {arrow: 'lt' },
-				focus: 1,
-				submit:function(e,v,m,f){
-					e.preventDefault();
-					if(v==0)
-						$.prompt.close();
-					else if(v==-1)
-						$.prompt.goToState('state0');
-				}
-			}
-		};
-
-		$.prompt(states);
     </script>
   </body>
 </html>
