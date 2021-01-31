@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<!--Based on https://github.com/mjfoster83/web-map-workshop/blob/master/7_advancedMapping_CartoDB/index-completed.html-->
+<html>
+  <head>
+    <title>Participatory Planning Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@0.7.7/dist/leaflet.css"
+       integrity="sha384-99ZJFcuBCh9c/V/+8YwDX/TUGG8JWMG+gKFJWzk0BZP3IoDMN+pLGd3/H0yjg4oa"
+       crossorigin=""/>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.12/leaflet.draw.css"/>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="jQuery-Impromptu/dist/jquery-impromptu.min.css" />
+    <link rel="stylesheet" type="text/css" href="css/style.css">
+  </head>
+  <body>
+    <div id="wrapper">
+      <div id="map"></div>
+      <div id="controls">
+        <div id="credits"><p></p></div>
+      </div>
+    </div>
+
+    <div id="dialog">     
+			<form>
+				<fieldset style="border: none;">
+					<ul style="list-style-type: none; padding-left: 0px; font-size: 19px; font-family: 'Helvetica'">
+						<li><input type="text" name="username" id="username" placeholder="Name" class="text ui-widget-content ui-corner-all"></li>
+						<br>
+						<li><input type="text" name="description" id="description" placeholder="Description" class="text ui-widget-content ui-corner-all"></li>
+						<br>
+					</ul>
+						<input type="submit" tabindex="-1" style="position:absolute; top:-1000px;font-size: 19px">
+				</fieldset>
+			</form>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@0.7.7/dist/leaflet.js"
+      integrity="sha384-Lh7SNUss9JoImCvc96eCUnLX3HvY4kb0UZCWZbYWvceJ+o5CJeOJqqNoheaGkNHT"
+      crossorigin=""></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/leaflet.draw/0.4.12/leaflet.draw.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+    <script src="jQuery-Impromptu/dist/jquery-impromptu.min.js"></script>
+    <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+    <script>
+		$('#controls').empty()
+	    	$('#credits').empty()
+	    
+		//TODO: Change to your username, insert function on Carto, and Carto tablename
+		var config = {
+			cartoUsername : "lbuk",
+			cartoInsertFunction : "insert_crowd_mapping_data",
+			cartoTablename : "participatory_planning_test",
+			mapcenter: [51.512927, -0.020601],
+			drawOptions: {
+				draw : {
+					polygon : true,
+					marker: true,
+					polyline : false,
+					rectangle: false,
+					circle : false,
+          				circlemarker : false
+				},
+				edit : false,
+				remove: false
+			}
+		};
+
+
+		// Add Data from Carto using the SQL API
+		// Declare Variables
+		// Create Global Variable to hold Carto points
+		var cartoData = null;
+
+		// Write SQL Selection Query to be Used on Carto Table
+		var sqlQuery = "SELECT the_geom, description, name FROM " + config.cartoTablename;
+
+		// Create Leaflet map object
+		var map = L.map('map', { center: config.mapcenter, zoom: 16});
+		// Add Tile Layer basemap
+		// Find your own at https://leaflet-extras.github.io/leaflet-providers/preview/
+		var OpenStreetMap_HOT = L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+		});
+
+		OpenStreetMap_HOT.addTo(map);
+
+		//Fetches
+		var getData = "https://" + config.cartoUsername + ".carto.com/api/v2/sql?format=GeoJSON&q=" + sqlQuery;
+
+		function getGeoJSON() {
+			$.getJSON(getData, function (data) {
+				cartoData = L.geoJson(data, {
+					onEachFeature: function (feature, layer) {
+						layer.bindPopup('' + feature.properties.description);
+					}
+				}).addTo(map);
+			});
+		}
+
+		getGeoJSON();
+
+		var drawnItems = new L.FeatureGroup();
+		map.addLayer(drawnItems);
+
+			new L.Control.Draw({
+					edit: {
+						featureGroup: drawnItems,
+						remove: false,
+					},
+					draw: {
+						polygon: {
+						  allowIntersection: false,
+						  fillOpacity: 0,
+						  drawError: {
+						    color: '#0000FF', 
+						    message: '<strong>You can\'t draw that!<strong>'
+						  },
+						  shapeOptions: {
+						    opacity: 0.1
+						  },
+						},
+						circle: false,
+						circlemarker: false,
+						polyline: false,
+						rectangle: false
+					}
+			}).addTo(map);
+
+
+		map.on(L.Draw.Event.CREATED, function (e) {
+	        var layer = e.layer;
+			map.addLayer(drawnItems);
+			drawnItems.addLayer(layer);
+			dialog.dialog("open");
+		});
+		
+		var dialog = $("#dialog").dialog({
+			autoOpen: false,
+			height: 290,
+			width: 330,
+			modal: true,
+			position: {
+				my: "center center",
+				at: "center center",
+				of: "#map"
+			},
+			buttons: {
+				"Add to Database": setData,
+				Cancel: function () {
+					dialog.dialog("close");
+					refreshLayer();				
+				}
+			},
+			close: function () {
+				form[0].reset();
+				refreshLayer();
+				console.log("Dialog closed");
+			}
+		});
+
+		form = dialog.find("form").on("submit", function (event) {
+			event.preventDefault();
+			setData();
+		});
+
+		function setData() {
+			var enteredUsername = "'" + username.value + "'",
+				enteredDescription = "'" + description.value + "'";
+			drawnItems.eachLayer(function (layer) {
+			//Convert the drawing to a GeoJSON to pass to the Carto sql database
+				var drawing = "'" + JSON.stringify(layer.toGeoJSON().geometry) + "'",
+
+				  //Construct the SQL query to insert data from the three parameters: the drawing, the input username, and the input description of the drawn shape
+					sql = "SELECT " + config.cartoInsertFunction + "(";
+				sql += drawing;
+				sql += "," + enteredDescription;
+				sql += "," + enteredUsername;
+				sql += ");";
+
+				console.log(drawing);
+
+				//Sending the data
+				$.ajax({
+					type: 'POST',
+					url: 'https://' + config.cartoUsername + '.carto.com/api/v2/sql',
+					crossDomain: true,
+					data: {"q": sql},
+					dataType: 'json',
+					success: function (responseData, textStatus, jqXHR) {
+						console.log("Data saved");
+					},
+					error: function (responseData, textStatus, errorThrown) {
+
+						console.log("Problem saving the data");
+					}
+				});
+
+				/* 
+				* Transfer submitted drawing to the Carto layer, this results in the user's data appearing on the map without
+				* requerying the database (see the refreshLayer() function for an alternate way of doing this) 
+				*/
+				var newData = layer.toGeoJSON();
+				  newData.properties.description = description.value;
+				  newData.properties.name = username.value;
+
+				cartoData.addData(newData);
+
+			});
+			
+			dialog.dialog("close");
+		}
+		function refreshLayer() {
+			console.log("drawnItems has been cleared");
+			map.removeLayer(drawnItems);
+			drawnItems = new L.FeatureGroup();
+			/* 
+			This would refresh the data-layer to include new data from the Carto table after each drawing is submitted. 
+			*/
+			//      if (map.hasLayer(cartoData)) {
+			//        map.removeLayer(cartoData);
+			//      };
+			//      getGeoJSON();
+		}
+	    var states = {
+			state0: {
+				html:'<p>This participatory planning tool provides users with a space to draw and comment on a map.</p>',
+				buttons: { "<p>How do I use this map?</p>": true },
+				focus: 1,
+				submit:function(e,v,m,f){
+					if(v){
+						e.preventDefault();
+						$.prompt.goToState('state1');
+						return false;
+					}
+					$.prompt.close();
+				}
+			},
+			state1: {
+				html:'<p>Use the buttons on the left to draw on the map. Click on the buttons to draw shapes and markers. You will be asked to provide a username and a comment. Click on the map to view the contributions.</p>',
+				buttons: { "<p>Back</p>": -1, "<p>Exit</p>": 0 },
+				position: {arrow: 'lt' },
+				focus: 1,
+				submit:function(e,v,m,f){
+					e.preventDefault();
+					if(v==0)
+						$.prompt.close();
+					else if(v==-1)
+						$.prompt.goToState('state0');
+				}
+			}
+		};
+
+		$.prompt(states);
+    </script>
+  </body>
+</html>
+

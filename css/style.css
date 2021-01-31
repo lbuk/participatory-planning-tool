@@ -1,0 +1,67 @@
+body {
+  margin: 0px;
+  font-family: Helvetica, sans-serif;
+  height: 100vh:
+}
+
+img {
+  float: left;
+  padding-right: 10px;
+}
+
+p {
+  font-size: 15px;
+  line-height: 25px;
+}
+
+h1 {
+  line-height: 60px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  font-weight: lighter;
+}
+
+#wrapper {
+  width: 100vw;
+  height: 100vh;
+}
+
+#map {
+  width: 100vw;
+  height: 100vh;
+}
+
+#controls {
+  display: none;
+}
+
+#form {
+  margin-top: 5px;
+  font-size: 20px;
+  text-align: left;
+  line-height: 0px;
+  width:100%;
+  float: left;
+}
+
+.leaflet-container {
+  font-size: 0.85em;
+  font-family: "Helvetica";
+}
+
+.ui-widget-header {
+  background: none;
+  border: none;
+}
+
+.ui-widget-content {
+  background: #ffffff;
+}
+
+.ui-dialog .ui-dialog-buttonpane {
+  text-align: left;
+  border: none;
+  border-width: 1px 0 0 0;
+  background-image: none;
+  padding: .3em 1em .5em .4em;
+}
